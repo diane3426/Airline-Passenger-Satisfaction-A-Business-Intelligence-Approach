@@ -1,0 +1,164 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+library(tidyverse)
+library(corrplot)
+library(caret)
+library(randomForest)
+library(cluster)
+library(clustMixType)
+library(glmnet)
+library(klaR)
+set.seed(123)
+```
+
+```{r}
+#read in data
+df = read.csv("train.csv")
+```
+
+
+
+```{r}
+#remove unnessacery columns and changing the NA values to the median of the column, which is 0
+df = subset(df, select = -X)
+df = subset(df, select = -id)
+df[is.na(df)] = 0
+```
+
+
+```{r}
+# List of columns to convert to factor
+factor_columns <- c("Gender", "Customer.Type", "Type.of.Travel", "Class", 
+                   "Inflight.wifi.service", "Departure.Arrival.time.convenient", 
+                   "Ease.of.Online.booking", "Gate.location", "Food.and.drink", 
+                   "Online.boarding", "Seat.comfort", "Inflight.entertainment", 
+                   "On.board.service", "Leg.room.service", "Baggage.handling", 
+                   "Checkin.service", "Inflight.service", "Cleanliness", "satisfaction")
+
+# Convert the columns to factor
+df[factor_columns] <- lapply(df[factor_columns], factor)
+summary(df)
+```
+
+
+```{r}
+summary(df)
+```
+
+
+```{r}
+#random forest model with cv
+rf_model = train(satisfaction ~ ., 
+               data = df, 
+               method = "rf", 
+               ntree = 300, 
+               trControl = trainControl(method = "cv", number = 5))
+rf_model
+```
+```{r}
+rf_model_small <- randomForest(satisfaction ~ ., data = df, ntree = 300, mtry = 40)
+
+# Model summary
+print(rf_model_small)
+
+```
+
+
+```{r}
+#Logistic regression
+
+df_class = df %>% 
+  mutate(satisfaction = case_when(
+    satisfaction == "neutral or dissatisfied" ~ 0,
+    satisfaction == "satisfied" ~ 1
+    
+  ))
+
+model_class = train(satisfaction ~ .,
+               data = df_class, 
+               method = "glm", 
+               family = "binomial",
+               trControl = trainControl(method = "cv", number = 10, classProbs = TRUE),
+               metric = "Accuracy"
+               )
+
+print(model_class$results)
+```
+```{r}
+logistic_model <- glm(satisfaction ~ ., data = df_class, family = "binomial")
+
+# Summary of the model
+summary(logistic_model)
+```
+
+```{r}
+#k proto
+k_range <- 1:10
+total_costs <- numeric(length(k_range))
+
+for (k in k_range) {
+  set.seed(123)
+  kproto_result <- kproto(x = df, k = k)
+  total_costs[k] <- kproto_result$tot.withinss
+}
+
+# Plot the total costs against k values
+plot(k_range, total_costs, type = "b", xlab = "Number of clusters (k)", ylab = "Total Within-Cluster Sum of Squares", main = "Elbow Method for Optimal k")
+
+```
+
+```{r}
+# Run k-prototypes clustering
+kproto_result <- kproto(x = df, k = 4)
+kproto_result
+
+```
+
+
+```{r}
+#LASSO
+df <- df %>%
+  mutate(satisfaction = case_when(
+    satisfaction == "satisfied" ~ 1,
+    satisfaction == "neutral or dissatisfied" ~ 0
+  ))
+
+#define response variable
+y <- df$satisfaction
+
+#define matrix of predictor variables
+x <- data.matrix(df)
+x <- subset(x, select = -satisfaction)
+
+#perform k-fold cross-validation to find optimal lambda value
+cv_model <- cv.glmnet(x, y, alpha = 1, nfolds = 10)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model) 
+```
+
+```{r}
+best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
+coef(best_model)
+```
+
+```{r}
+y_predicted <- predict(best_model, s = best_lambda, newx = x)
+
+#find SST and SSE
+sst <- sum((y - mean(y))^2)
+sse <- sum((y_predicted - y)^2)
+
+#find R-Squared
+rsq <- 1 - sse/sst
+rsq
+```
+
+
