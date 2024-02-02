@@ -1,5 +1,8 @@
 # Airline Passenger Satisfaction Analysis
 
+## Blog post Link
+https://github.com/diane3426/Airline-Passenger-Satisfaction-A-Business-Intelligence-Approach/blob/main/Airline_Passenger_Satisfaction_Project_Team57.pdf
+
 ## Introduction
 This project aims to enhance airline passenger satisfaction by leveraging Business Intelligence and Data Mining techniques. The competitive nature of the airline industry makes passenger satisfaction a critical factor for profitability and customer loyalty. By employing advanced data analytics and machine learning techniques, the objective is to transform raw data into actionable insights. These insights are intended to guide airlines in refining their services, tailoring offerings to meet diverse customer needs, and ultimately, building stronger, loyalty-driven relationships with passengers. The project underscores the role of data-driven decision-making in elevating the passenger experience and fostering a culture of continuous improvement within the airline industry.
 
